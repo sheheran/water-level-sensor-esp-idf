@@ -1,0 +1,8 @@
+{
+    "cmake.sourceDirectory": "/home/minindu/esp/import_arduino_library/ESP-IDF-CPP-Template",
+    "idf.espIdfPath": "/home/minindu/esp/esp-idf",
+    "idf.toolsPath": "/home/minindu/.espressif",
+    "idf.openOcdConfigs": [
+        "board/esp32c3-builtin.cfg"
+    ]
+}
