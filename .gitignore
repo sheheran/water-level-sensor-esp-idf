@@ -1,1 +1,4 @@
 build
+ESP-IDF-CPP-Template/components/arduino/
+ESP-IDF-CPP-Template/components/SparkFun_u-blox_GNSS/
+ESP-IDF-CPP-Template/build/
