@@ -26,7 +26,7 @@ Setting up the connection
 
 Open the project configuration menu 'idf.py menuconfig'
 
-1) Inside the example, 'Connection Configuration' menu.
+1) Inside the 'Example Connection Configuration' menu.
 - If Wifi is used provide the Wifi-SSID and password of the AP you wish to connect to,
 
 'Configuration' menu
@@ -48,4 +48,30 @@ After building, need to create a self-signed certificate and run a simple HTTPS 
 1)  Enter the directory containing build artifacts of the project, that will be hosted by the HTTPS server.
 
 2) To create a new self-signed certificate and key run command ' openssl req -x509 -newkey rsa:2048 - keyout ca_key.pem -out ca_cert.pem -days 365 -nodes' .
- - When prompted for the 'common name (CN)', enter the name of the server that the "ESP-Dev-Board" will connect to
+ - When prompted for the 'common name (CN)', enter the name of the server that the "ESP-Dev-Board" will connect to. When running from a devlopment machine, 
+ this will be the IP address. The HTTPS client will checkthat the CN matches the address given in the HTTPS URL.
+
+ 3) This directory should contain the firmware (hello_world.bin) to be used in the update process. This can be a file name corresponds to the name 
+ configured using 'Firmware Upgrade URL' in menuconfig. 
+ The only difference to flashing firmware via the serial interface is that the binary is flashed to the factory partition,
+ While OTA updates use one of the OTA partitions.
+
+ Start the HTTPS server
+
+ OpenSSL based server
+
+To start the openssl based HTTPS server run 'openssl s_server -WWW -key ca_key.pem -cert ca_cert.pem -port 8070'
+
+Note: The OpenSSL server cannot handle partial HTTP requests, so it dose not support partial downloading.
+
+Note: Make sure incoming access to port 8070 is not prevented by firewall rules.
+
+Note: 
+
+ Python based server
+
+
+ Internal Workflow of the OTA Example
+
+ After booting the firmware:
+
