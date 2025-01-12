@@ -2,5 +2,8 @@
 # CMakeLists in this exact order for cmake to work correctly
 cmake_minimum_required(VERSION 3.16)
 
+# Set the path to the shared components directory
+set(EXTRA_COMPONENT_DIRS "/home/minindu/esp/import_arduino_library/components")
+
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
 project(hello_world)

@@ -6,10 +6,9 @@
 
 # Ignore specific components in all projects
 **/components/arduino/
-**/components/SparkFun_u-blox_GNSS/
+**/managed_components/
 
 # Ignore any temporary files
 .vscode
-
 
 
