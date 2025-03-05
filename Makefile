@@ -28,19 +28,19 @@ init:
 	else \
 		echo "JSN-SR04T submodule already exists, updating."; \
 	fi
-# 	@if [ ! -d "components/arduino-esp32" ]; then \
-# 		echo "Submodule add arduino-esp32"; \
-# 		git submodule add git@github.com:espressif/arduino-esp32.git components/arduino-esp32; \
-# 	else \
-# 		echo "arduino-esp32 submodule already exists, updating."; \
-# 	fi
-# # Re-initialize submodules
-# 	@git submodule update --init --recursive
+	@if [ ! -d "components/arduino-esp32" ]; then \
+		echo "Submodule add arduino-esp32"; \
+		git submodule add git@github.com:espressif/arduino-esp32.git components/arduino-esp32; \
+	else \
+		echo "arduino-esp32 submodule already exists, updating."; \
+	fi
+# Re-initialize submodules
+	@git submodule update --init --recursive
 
-# # Checkout specific branch for arduino-esp32 if it exists
-# 	@if [ -d "components/arduino-esp32" ]; then \
-# 		cd components/arduino-esp32 && git fetch && git checkout release/v3.1.x && git submodule update --init --recursive; \
-# 	fi
+# Checkout specific branch for arduino-esp32 if it exists
+	@if [ -d "components/arduino-esp32" ]; then \
+		cd components/arduino-esp32 && git fetch && git checkout release/v3.1.x && git submodule update --init --recursive; \
+	fi
 
 # Print and create CMakeLists.txt if the directory exists
 	@for dir in Adafruit_NeoPixel AsyncDelay JSN-SR04T; do \
