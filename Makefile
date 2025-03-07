@@ -83,14 +83,26 @@ clean:
 
 
 cleanall:
-	@echo "Removing submodules..."
-	@for dir in Adafruit_NeoPixel AsyncDelay JSN-SR04T arduino-esp32; do \
-		if [ -d "components/$$dir/" ]; then \
-			echo "Removing submodule $$dir..."; \
-			git submodule deinit -f components/$$dir; \
-			git rm -f components/$$dir; \
-			rm -rf .git/modules/components/$$dir; \
+	@if [ -z "$(MODULE)" ]; then \
+			echo "Removing submodules..."; \
+			for dir in Adafruit_NeoPixel AsyncDelay JSN-SR04T arduino-esp32; do \
+				if [ -d "components/$$dir/" ]; then \
+					echo "Removing submodule $$dir..."; \
+					git submodule deinit -f components/$$dir; \
+					git rm -f components/$$dir; \
+					rm -rf .git/modules/components/$$dir; \
+				fi; \
+			done; \
+		rm -rf components; \
+		echo "All submodules and components directory removed."; \
+	else \
+		echo "Removing submodule $(MODULE)..."; \
+		if [ -d "components/$(MODULE)/" ]; then \
+			git submodule deinit -f components/$(MODULE); \
+			git rm -f components/$(MODULE); \
+			rm -rf .git/modules/components/$(MODULE); \
+			echo "Submodule $(MODULE) removed."; \
+		else \
+			echo "Submodule $(MODULE) does not exist."; \
 		fi; \
-	done
-	@rm -rf components
-	@echo "All submodules and components directory removed." 
+	fi
