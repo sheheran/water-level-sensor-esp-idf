@@ -5,7 +5,7 @@
 **/sdkconfig.old
 
 # Ignore specific components in all projects
-**/components/arduino-esp32/
+#**/components/arduino-esp32/
 **/managed_components/
 
 # Ignore any temporary files

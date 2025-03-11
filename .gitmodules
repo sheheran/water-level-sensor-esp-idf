@@ -1,0 +1,12 @@
+[submodule "components/Adafruit_NeoPixel"]
+	path = components/Adafruit_NeoPixel
+	url = git@github.com:adafruit/Adafruit_NeoPixel.git
+[submodule "components/AsyncDelay"]
+	path = components/AsyncDelay
+	url = git@github.com:stevemarple/AsyncDelay.git
+[submodule "components/JSN-SR04T"]
+	path = components/JSN-SR04T
+	url = git@github.com:hornmich/JSN-SR04T.git
+[submodule "components/arduino-esp32"]
+	path = components/arduino-esp32
+	url = git@github.com:espressif/arduino-esp32.git

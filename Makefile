@@ -42,12 +42,17 @@ init:
 		cd components/arduino-esp32 && git fetch && git checkout release/v3.1.x && git submodule update --init --recursive; \
 	fi
 
+# Checkout specific branch for Adafruit_NeoPixel if it exists
+	@if [ -d "components/Adafruit_NeoPixel" ]; then \
+		cd components/Adafruit_NeoPixel && git fetch && git checkout espidf5_rmt && git submodule update --init --recursive; \
+	fi
+
 # Print and create CMakeLists.txt if the directory exists
 	@for dir in Adafruit_NeoPixel AsyncDelay JSN-SR04T; do \
 		if [ "$$dir" = "Adafruit_NeoPixel" ] && [ -d "components/Adafruit_NeoPixel" ]; then \
 	echo "# CMakeLists.txt inside Adafruit_NeoPixel folder"; \
 	echo -e "cmake_minimum_required(VERSION 3.5)\n\n\
-	idf_component_register(SRCS \"Adafruit_NeoPixel.cpp\" \"rsp.c\" \n\t\t\t\t\t\
+	idf_component_register(SRCS \"Adafruit_NeoPixel.cpp\" \"esp.c\" \n\t\t\t\t\t\
 	INCLUDE_DIRS \".\"\n\t\t\t\t\t\
 	REQUIRES \"arduino-esp32\")\n\n\
 	project(Adafruit_NeoPixel)" > components/Adafruit_NeoPixel/CMakeLists.txt; \
@@ -91,6 +96,7 @@ cleanall:
 					git submodule deinit -f components/$$dir; \
 					git rm -f components/$$dir; \
 					rm -rf .git/modules/components/$$dir; \
+					git rm --cached components/$$dir; \
 				fi; \
 			done; \
 		rm -rf components; \
@@ -102,6 +108,7 @@ cleanall:
 			git rm -f components/$(MODULE); \
 			rm -rf .git/modules/components/$(MODULE); \
 			echo "Submodule $(MODULE) removed."; \
+			git rm --cached components/$(MODULE); \
 		else \
 			echo "Submodule $(MODULE) does not exist."; \
 		fi; \
