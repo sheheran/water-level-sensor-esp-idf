@@ -1,8 +1,8 @@
 # Ignore all build directories in the repository
 **/build/
-**/sdkconfig
-**/sdkconfig.ci
-**/sdkconfig.old
+#**/sdkconfig
+#**/sdkconfig.ci
+#**/sdkconfig.old
 
 # Ignore specific components in all projects
 #**/components/arduino-esp32/
