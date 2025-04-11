@@ -84,7 +84,8 @@ The main function starts by initializing the non-volatile storage library.
 -	Next, the controller is enabled in BLE Mode. (Other Modes:  Bluetooth not running, BLE mode, BT Classic mode, Dual mode)
 
 -	After the initialization of the BT controller, the Bluedroid stack, which includes the common definitions and APIs for both BT Classic and BLE, is initialized and enabled.
-	The Bluetooth stack is up and running at this point in the program flow,
+
+-	The Bluetooth stack is up and running at this point in the program flow, however the functionality of the application has not been defined yet.
 
 -	The functionality is defined by reacting to events such as what happens when another device tries to read or write parameters and establish a connection. 
 	GAP and GATT event handler managers, 
@@ -99,6 +100,9 @@ profile is designed to fit each client application). A single design, enable by 
 towards different clients. Each profile is seen by the client as indipendent BLE service. It is up to the client to descriminate between 
 the Application Profiles."
 
+Each profile is defined as a struct where the struct members depend on the services and characteriscs that 
+are implemented in that "Application Profile". 
+
 -	An Application Profile is Defined as a Struct, This Application Profile defines one service, one characteristics, one descriptor.
 	-	GATT Interface
 	-	Application ID	-	 An user-assigned number to identify each profile, is used to register the profile in the stack,
@@ -111,6 +115,9 @@ the Application Profiles."
 	-	Characteristic properties
 	-	Client Characteristic Configuration descriptor handle
 	-	Client Characteristic Configuration descriptor UUID
+
+It can be observed from this structure that this profile was designed to have one service and one characteristic, 
+and that the characteristic has one descriptor.
 
 **( if the characteristic supports notifications or indications, it must implement a Client Characteristic Configuration descriptor (CCCD), 
 which is an additional attribute that describes if the notifications or indications are enabled and defines how the characteristic may be configured by a specific client. 
@@ -186,3 +193,7 @@ makes the server to actually start advertising and takes an esp_ble_adv_params_t
 
 " The advertising data is the information that is shown to the client, while the advertising parameters are the configuration required by the GAP to execute."
 
+	-	GATT Event Handlers		-
+
+When an "Application Profile" is registered, an `ESP_GATTS_REG_EVT` event is triggered. The parameters of the 
+`ESP_GATTS_REG_EVT`
