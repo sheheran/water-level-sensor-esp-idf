@@ -31,7 +31,10 @@
 #include "gatt_server_wls.h"
 #include "esp_gatt_common_api.h"
 
-#define GATTS_TABLE_TAG "GATTS_TABLE"
+#define GATTS_TABLE_TAG "GATTS_TABLE_WATER_LEVEL_PROFILE"
+
+
+#define GATTS_SERVICE_UUID 0x00FF
 
 /*
 Finally, the Application Profiles are registered using the Application ID, which is an user-assigned number to identify each profile. 
@@ -66,11 +69,18 @@ struct gatts_profile_inst {
 
 /* Application Profile Structure Implimentation */
 
+static  
 
-
+/* One gatt-based profile one 'app_id' and one `gatts_if`, this array will store the 'gatts_if' returned by ESP_GATTS_REG_EVT */
+static struct gatts_profile_inst heart_rate_profile_tab[PROFILE_NUM] = {
+    [PROFILE_APP_IDX] = {
+        .gatts_cb = gatts_profile_event_handler,
+        .gatts_if = ESP_GATT_IF_NONE,       /* Not get the gatt_if, so initial is ESP_GATT_IF_NONE */
+    },
+};
 
 /* GATTS Event Handler */
-static void gatts_event_handler(esp_gatts_cd_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cd_param_t *param)
+static void gatts_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
 {
 	/* If event is register event, store the gatts_if for each profile*/
 }
@@ -80,6 +90,57 @@ static void gap_event_handler()
 {
 
 }
+
+/* Setting GAP Parameters */
+typedef struct {
+	bool set_scan_rsp;				/* !< Set this advertising data as scan response or not */
+	bool include_name;				/* !< Advertising data include device name or not */
+	bool include_txpower;			/* !< Advertising data include TX power */
+	int min_interval;				/* !< Advertising data show slave preferred connection min interval */
+	int max_interval;				/* !< Advertising data show slave preferred connection max interval */
+	int appearance;					/* !< External appearance of device */
+	uint16_t manufacturer_len;		/* !< Manufacturer data length */
+	uint8_t *p_manufacturer_data;	/* !< Manufacturer data length */
+	uint16_t service_data_len;		/* !< Manufacturer data point */
+	uint8_t *p_service_data;		/* !< Service data length */
+	uint16_t service_uuid_len;		/* !< Service uuid array point */
+	uint8_t flag;					/* Advertising flag of discovery mode, see BLE_ADV_DATA_FLAG detail */
+} esp_ble_adv_data_t;
+
+static esp_ble_adv_t water_level_adv_config = {
+	.set_scan_rsp = false,
+	.include_name = true,
+	.include_txpower = true,
+	.min_interval = 0x0006,
+	.max_interval = 0x0001,
+	.appearance = 0x00,
+	.manufacturer_len = 0,
+	.p_manufacturer_data = NULL,
+	.service_uuid_len = sizeof(water_level_serviice_uuid),
+	.p_service_uuid = water_level_service_uuid,
+	.flag = (ESP_BLE_ADV_FLAG_GEN_DISC | ESP_BLE_ADV_FLAG_BREDR_NOT_SPT),
+};
+
+/* 
+	The minimum and maximum slave preferred connection intervals are set in units of 1.25ms. 
+	In this example, the minimun slave preferred connection interval is defined as 0x0006 * 1.25ms = 7.5ms and
+	the maximum slave preferred connection interval is initialized as 0x0010 * 1.25 ms 20ms.
+
+	An advertising paylog can be up to 31 bytes of data. It is possible that some of the parameters surpass the 
+	31-byte advertiesment packet limit which causes the stack to cut the message and leave some of the parameters out.
+
+	To solve this, usually the longer parameters are stored in the scan response, which can be configured using the same
+	`esp_ble_gap_config_adv_data()` function and an additional esp_ble_adv_data_t type structure with the .set_scan_rsp parameter
+	is set to true.
+
+	Finally, to set the device name the 'esp_ble_gap_set_device_name()` function is used. 
+*/
+
+/* Full Database Description - Used to add attributes*/
+
+
+static void gatts_profile_event_handler(esp_gatts_cb_event_t event,
+					esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
 
 void app_main(void)
 {
@@ -166,7 +227,7 @@ void app_main(void)
 		return;
 	}
 	
-	/*  */
+	/* Finally, the Appllication Profiles are registered using tha Application ID, which is a user-assigned number to identify each profile1 */
 	ret = esp_ble_gatts_app_register(ESP_APP_ID);
 	if (ret){
 		ESP_LOGE(GATTS_TABLE_TAG, "gatts app register error, error code = %x", ret);
@@ -177,4 +238,77 @@ void app_main(void)
 	if (local_mut_ret){
 		ESP_LOGE(GATTS_TABLE_TAG, "set local MTU failed, error code = %x", local_mut_ret);
 	}
+}
+
+
+static void gatts_profile_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param)
+{
+	switch (event)
+	{
+	case ESP_GATTS_REG_EVT:{
+		/*
+		Run-time Information,
+		'param->reg.status' -> tells you if registration succeeded (ESP_GATT_OK = 0)
+		'param->reg.app_id' -> the application ID you used when registering.
+		'gatts_if' -> the interface ID assigned to this GATT server profile.
+
+		ESP_GATTS_REG_EVT
+
+		esp_ble_gap_set_device_name
+		esp_ble_gap_config_adv_data_raw
+		esp_ble_gap_config_scan_rsp_data_raw
+		esp_ble_gatts_create_attr_tab / esp_ble_gatts_create_service
+
+		*/ 
+		ESP_LOGI(GATTS_TABLE_TAG, "GATT server register, status %d, app_id %d, gatts_if %d", param->reg.status, param->reg.app_id, gatts_if);
+		gl_profile_tab[ESP_APP_ID].service_id.is_primary = true;
+		gl_profile_tab[ESP_APP_ID].service_id.id.inst_id = 0x00;
+		gl_profile_tab[ESP_APP_ID].service_id.id.uuid.len = ESP_UUID_LEN_16;
+		gl_profile_tab[ESP_APP_ID].service_id.id.uuid.uuid.uuid16 = GATTS_SERVICE_UUID;
+	
+		// Device Name: Sets to SIMPLE_DEVICE_NAME
+		esp_err_t set_dev_name_ret = esp_ble_gap_Set_device_name(SAMPLE_DEVICE_NAME);
+		if (set_dev_name_ret){
+			ESP_LOGE(GATTS_TABLE_TAG, "set device name failed, error code = %x", set_dev_name_ret);
+		}
+	#ifdef CONFIG_SET_RAW_ADV_DATA
+		// Advertising Data: Configured, uses raw_adv_data
+		esp_err_t raw_adv_ret = esp_ble_gap_config_adv_data_raw(raw_adv_data, sizeof(raw_adv_data));
+		if (raw_adv_ret){
+			ESP_LOGE(GATTS_TABLE_TAG, "config raw dav data failed, error code = %x", raw_adv_ret);
+		}
+		adv_config_done |= ADV_CONFIG_FLAG;
+		esp_err_t raw_scan_ret = esp_ble_gap_config_scan_rsp_data_raw(raw_scan_rsp_data, sizeof(raw_scan_rsp_data));
+		if (raw_scan_ret){
+			ESP_LOGE(GATTS_TABLE_TAG, "config raw scan rsp data failed, error code = %x", raw_scan_ret);
+		}
+		adv_config_done |= SCAN_RSP_CONFIG_FLAG;
+	#else
+		// Advertising Data: Configured, uses adv_data
+		esp_err_t ret = esp_ble_gap_config_adv_data(&adv_data);
+		if (ret){
+			ESP_LOGE(GATTS_TABLE_TAG, "config adv data failed, error code = %x", ret);
+		}
+		adv_config_done |= SCAN_RSP_CONFIG_FLAG;
+		// Advertising Data: Configured, uses scan_rsp_data (scan response data)
+		ret = esp_ble_gap_config_adv_data(&scan_rsp_data);
+		if (ret){
+			ESP_LOGE(GATTS_TABLE_TAG, "config scan response data failed, error code = %x", ret);
+		}
+		adv_config_done |= SCAN_RSP_CONFIG_FLAG;
+	#endif
+		// Attribute Table: Created using esp_ble_gatts_create_attr_tab
+		esp_err_t create_attr_ret = esp_ble_gatts_create_attr_tab(gatt_db, gatts_if, HRS_IDX_NB, SCV_INST_ID);
+		if (create_attr_ret){
+			ESP_LOGE(GATTS_TABLE_TAG, "create attr table failed, error code = %x", create_attr_ret);
+		}
+		// Service UUID: Implicitly defined within the gatt_db array (not explicitly set here)
+        // Service Creation: Implicitly done via esp_ble_gatts_create_attr_tab
+	}
+		break;
+	
+	default:
+		break;
+	}
+	
 }
