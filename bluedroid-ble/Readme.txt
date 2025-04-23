@@ -197,3 +197,6 @@ makes the server to actually start advertising and takes an esp_ble_adv_params_t
 
 When an "Application Profile" is registered, an `ESP_GATTS_REG_EVT` event is triggered. The parameters of the 
 `ESP_GATTS_REG_EVT`
+
+
+
