@@ -10,3 +10,6 @@
 [submodule "components/arduino-esp32"]
 	path = components/arduino-esp32
 	url = git@github.com:espressif/arduino-esp32.git
+[submodule "esp-now"]
+	path = esp-now
+	url = git@github.com:espressif/esp-now.git
