@@ -39,7 +39,7 @@ init:
 
 # Checkout specific branch for arduino-esp32 if it exists
 	@if [ -d "components/arduino-esp32" ]; then \
-		cd components/arduino-esp32 && git fetch && git checkout release/v3.1.x && git submodule update --init --recursive; \
+		cd components/arduino-esp32 && git fetch && git checkout tags/3.2.0 && git submodule update --init --recursive; \
 	fi
 
 # Checkout specific branch for Adafruit_NeoPixel if it exists

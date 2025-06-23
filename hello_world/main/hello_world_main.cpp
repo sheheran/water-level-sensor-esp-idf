@@ -2,6 +2,7 @@
 #include <Arduino.h>
 #include <Adafruit_NeoPixel.h>
 #include <AsyncDelay.h>
+#include <Wire.h>
 
 #define PIN 2
 #define NUMPIXELS 1
