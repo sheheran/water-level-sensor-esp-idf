@@ -10,36 +10,6 @@ and then starts advertising so that GATT client can connet and exchange data.
 "bluetooth/bluedroid/ble/gatt_client" demonstrates how to create a GATT Client that connects to a GATT server, 
 enabling the server's notification function to discover services. 
 
-
-
-git sparse-checkout set examples/bluetooth/bluedroid/ble/gatt_server_service_table
-git checkout release/v5.3
-mv examples/bluetooth/bluedroid/ble/gatt_server_service_table/ .
-rm -rf examples/bluetooth/bluedroid/
-
-
-git sparse-checkout set examples/bluetooth/bluedroid/ble/gatt_client
-git checkout release/v5.3
-mv examples/bluetooth/bluedroid/ble/gatt_client/ .
-rm -rf examples/bluetooth/bluedroid/
-
-
-git sparse-checkout set  examples/bluetooth/bluedroid/ble/gatt_server
-git checkout release/v5.3
-mv examples/bluetooth/bluedroid/ble/gatt_server/ .
-rm -rf examples/bluetooth/bluedroid/
-
-
-git sparse-checkout set examples/bluetooth/bluedroid/ble/gatt_security_server
-git checkout release/v5.3
-mv examples/bluetooth/bluedroid/ble/gatt_security_server/ .
-rm -rf examples/bluetooth/bluedroid/
-
-git sparse-checkout set examples/bluetooth/bluedroid/ble/gatt_security_client
-git checkout release/v5.3
-mv examples/bluetooth/bluedroid/ble/gatt_security_client/ .
-rm -rf examples/bluetooth/bluedroid/
-
 The enumeration elements are set up in the same order as Heart Rate
 Profile attrebutes, starting with the service followed by the characteriscs
 of that service. 
@@ -203,6 +173,8 @@ makes the server to actually start advertising and takes an esp_ble_adv_params_t
 When an "Application Profile" is registered, an `ESP_GATTS_REG_EVT` event is triggered. The parameters of the 
 `ESP_GATTS_REG_EVT`
 
+=========================
+
 
 *** Why is that "esp_ble_gap_config_adv_data()" and "esp_ble_gap_set_device_name()" are called within
 'gatts_profile_event_handler()' ? ***
@@ -212,6 +184,19 @@ How 'BLE profile', 'event handlers', and the 'BLE stack initialization' process 
 static void gatts_profile_event_handler(esp_gatts_cd_event_t event,
 								esp_gatt_if_t gatts_if,
 								esp_ble_gatts_cb_param_t *param)
+
+1. 'static' function limits this function to-the current source file. Others can't call this function directly.
+2. Parameters
+	a. 'esp_gatts_cd_event_t event'
+		The 'enum' represents the type of GATT server event (registration, read, write, connect, disconnect)
+		The function reacts deferent depending on what event occurs.
+	b. 'esp_gatt_if_t event'
+		'GATT interface ID assigned by the system. Which application the event is for.
+		Use this value to send responses or perform actions through correct interface.
+	c.	'es[_ble_gatts_cd_param_t *param]
+		pointer to a union that holds the parameters associated with the event.
+		Since different events have different kinds of data, this is a union type, 
+		and you select the correct field depending on the event type.
 
 						
 This is a pre-profile event handler, different from the global `gatts_event_handler()'. It's usually called from
@@ -223,9 +208,244 @@ These functions configure GAP (Generic Access Profile) settingds linke
 	- 	Device Name (what the client sees in a scan)
 	-	Advertising data (how your device advertiseS it's presence)
 
-And they're typically called in response to the `ESP_GATTS_REG_EVT' event,
+And they're typically called in response to the `ESP_GATTS_REG_EVT' event, which means
+" The GATT Server has registered successfully and ready to proceed.
 
-Possible GATT Server callback events 
+Three event handler methods are present 'gatts_event_handler', 'gap_event_handler', and 'gatts_profile_event_handler'
+
+```
+main_app(){
+	ret = esp_ble_gatts_register_callback(gatts_event_handler);
+	if (ret) {
+		ESP_LOGE(GATTS_TABLE_TAG, "gatts register error, error code = %x", ret);
+		return;
+	}
+}
+
+static void gatts_event_handler(esp_gatts_cd_event_t,
+	esp_gatt_if_t gatts_if,
+	esp_ble_gatts_cb_param_t *param
+){
+	/* If the event is register event, store the gatts_if for each profile */
+	if (event == ESP_GATTS_REG_EVT) {
+		if (event == ESP_GATTS_REG_EVT) {
+			if (param ->reg.status == ESP_GATT_OK) {
+				heart_rate_profile_tab[PROFILE_APP_IDX].gatts_if = gatts_if;
+			} else {
+				ESP_LOGE(GATTS_TABLE_TAG, "reg app failed, app_id %04x, status %d",
+					param->reg.app_id,
+					param->reg.status);
+				return;
+			}
+		}
+		do {
+			int idx;
+			for (idx = 0; idx < PROFILE_NUM; idx++) {
+				/* ESP_GATT_IF_NONE, not specify a certain gatts_if, need to call every profile cd function */
+				if (gatts_if == ESP_GATT_IF_NONE || gatts_if == heart_rate_profile_tab[idx]. gatts_if){
+					if (heart_rate_profile_tab[idx].gatts_cd) {
+						heart_rate_profile_tab[idx].gatts_cd(event, gatts_if, param);
+					}
+				}
+			}
+		} while (0);
+	}
+}
+
+```
+The gatts_event_handler function manages both profiles by iterating through the 'gl_profile_tab' array, which contains 
+the registered GATT profiles, and invoking the appropriate callback function for each profile.
+
+1. **Handling the ESP_GATTS_REG_EVT Event**
+	- If the event is ESP_GATTS_REG_EVT (a registration event), the function checks the registration status
+	(param -> reg.status).
+	- If the registration is successful (status is ESP_GATT_OK), it stores the gatts_if(GATT interface)
+	inthe corresponding profile (gl_profile_tab[param->reg.app_id].gatts_if).
+	- If the registration fails, it logs the failure and exits the function.
+
+2. **Iterating Through Profiles**
+	- For all other events, the function enters a loop to iterate through all profiles in gl_profile_tab (up to PROFILE_NUM).
+	- For each profile, It checks whether the gatts_if matches the profile's stored gatts_if or if the gatts_if is ESP_GATT_IF_NONE.
+	- If ESP_GATTS_IF_IS_NONE is provided, it indicates that the event is not specific to a particular GATT interface,
+	so the callback function for all profiles should be called.
+	- If the profile has a registered callback function (gl_profile_tab[idx].gatts_cd), the callback function is invoked with the
+	event, gatts_if, and event parameters (param).
+
+3. Through this design, the gatts_event_handler ensures that:
+	- Each profile's specific callback is involked when an event is relevent to that profile.
+	- Events not tied to a specific GATT interface are broadcast to all profiles.
+	- This structure allows multiple profiles to coexist, each with it's own callback function to handle events indipendently.
+''
+
+1.
+
+static void gatts_profile_event_handler(esp_gatts_cb_event_t event,
+					esp_gatt_if_t gatts_if,
+					esp_ble_gatts_cb_param_t *param);
+
+/* One gatt-based profile, one app_id and one gatts_if, this array will store the gatts_if returned by ESP_GATTS_REG_EVT */
+static struct gatts_profile_inst heart_rate_profile_tab[PROFILE_NUM] = {
+	[PROFILE_APP_IDX] = {
+		.gatts_cd = gatts_profile_event_handler,
+		.gatts_if = ESP_GATT_IF_NONE, /* Not get the gatt_if, so initial is ESP_GATT_IF_NONE */
+	},
+};
+
+static void gatts_profile_event_handler(esp_gatts_cd_event_t,
+	esp_gatt_if_t gatts_if, 
+	esp_ble_gatts_cd_param_t *param)
+	{
+		switch (event) {
+			case ESP_GATTS_REG_EVT:{
+				esp_err_t set_dev_name_ret = esp_ble_gap_set_device_name(SIMPLE_DEVICE_NAME);
+				if (set_dev_name_ret){
+					ESP_LOGE(GATTS_TABLE_TAG, "set device name failed, error code = %x", set_dev_name_ret);
+				}
+			break;
+
+			case ESP_GATTS_READ_EVT:
+				ESP_LOGI(GATTS_TABLE_TAG, "ESP_GATTS_READ_EVT");
+				break;
+			case ESP_GATTS_WRITE_EVT:
+			......
+
+			}
+		}
+	}
+```
+
+Basic funcgtional version with error check
+	- Sets device name.
+	- Logs error if it fails.
+	- No info log
+	- Clean and minial
+
+2.
+```
+static void gatts_profile_a_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
+static void gatts_profile_b_event_handler(esp_gatts_cb_event_t event, esp_gatt_if_t gatts_if, esp_ble_gatts_cb_param_t *param);
+
+/*One gatt-based profile, one app_id and one gatts_if, this array will store the gatts_if returned by ESP_GATTS_REG_EVT */
+static struct gatts_profile_inst gl_profile_tab[PROFILE_NUM] = {
+	[PROFILE_A_APP_ID] = {
+		.gatts_cd = gatts_profile_a_event_handler,
+		.gatt_if = ESP_GATT_IF_NONE, /* Not get the gatt_if, so initial is ESP_GATT_IF_NONE */
+	},
+	[PROFILE_B_APP_ID] - {
+		.gatts_cd = gatts_profile_a_event_handler,
+		.gatt_if = ESP_GATT_IF_NONE, /* Not get the gatt_if, so initial is ESP_GATT_IF_NONE */		
+	}
+}
+
+static void gatts_profile_a_event_handler(esp_ble_adv_data_t event,
+	esp_gatt_if_t gatts_if,
+	esp_ble_adv_data_t *param)
+	{
+		switch (event) {
+			case ESP_GATTS_REG_EVT:
+				ESP_LOGI(GATTS_TAG, "GATT server register, status %d, app_id %d, gatts_if %d" , param->reg.status, param->reg.app_id, gatts_if);
+				gl_profile_tab[PROFILE_A_APP_ID].service_id.is_primary = true;
+				gl_profile_tab[PROFILE_A_APP_ID].service_id.inst_id = 0x00;
+				gl_profile_tab[PROFILE_A_APP_ID].service_id.uuid.len = ESP_UUID_LEN_16;
+				gl+profile_tab[PROFILE_A_APP_ID].service_id.id.uuid.uuid.uuid16 = GATTS_SERVICE_UUID_TEST_A;
+
+				esp_err_t set_dev_name_ret = esp_ble_gap_set_device_name(test_device_name);
+				if (set_dev_name_ret){
+					ESP_LOGE(GATTS_TAG, "set device name failed, error code = %x", set_dev_name_ret);
+				}
+
+			break;
+
+			case ESP_GATTS_READ_EVT: {
+				ESP_LOGI(GATTS_TAG,
+							"Characteristic read request: conn_id=%d, trans_id=%" PRIu32 ", handle=%d, is_long=%d, offset=%d , need_rsp=%d,
+							param->read.conn_id, param->read.trans_id, param->read.handle,
+							param->read.is_long, param->read.offset, param->read.need_rsp);
+				
+				// If no responses is needed, exit early (stack handles it automatically)
+			break;
+			...
+			}
+		}
+	}
+
+
+static void gatts_profile_b_event_handler(esp_ble_adv_data_t event,
+esp_gatt_if_t gatts_if,
+esp_ble_adv_data_t *param)
+{
+	switch (event) {
+		case ESP_GATTS_REG_EVT:
+			ESP_LOGI(GATTS_TAG, "GATT server register, status %d, app_id %d, gatts_if %d" , param->reg.status, param->reg.app_id, gatts_if);
+			gl_profile_tab[PROFILE_A_APP_ID].service_id.is_primary = true;
+			gl_profile_tab[PROFILE_A_APP_ID].service_id.inst_id = 0x00;
+			gl_profile_tab[PROFILE_A_APP_ID].service_id.uuid.len = ESP_UUID_LEN_16;
+			gl+profile_tab[PROFILE_A_APP_ID].service_id.id.uuid.uuid.uuid16 = GATTS_SERVICE_UUID_TEST_A;
+
+			esp_err_t set_dev_name_ret = esp_ble_gap_set_device_name(test_device_name);
+			if (set_dev_name_ret){
+				ESP_LOGE(GATTS_TAG, "set device name failed, error code = %x", set_dev_name_ret);
+			}
+
+		break;
+
+		case ESP_GATTS_READ_EVT: {
+			ESP_LOGI(GATTS_TAG,
+						"Characteristic read request: conn_id=%d, trans_id=%" PRIu32 ", handle=%d, is_long=%d, offset=%d , need_rsp=%d,
+						param->read.conn_id, param->read.trans_id, param->read.handle,
+						param->read.is_long, param->read.offset, param->read.need_rsp);
+			
+			// If no responses is needed, exit early (stack handles it automatically)
+		break;
+		...
+		}
+	}
+}
+```
+Fully-featured version with service setup
+	- Sets device name.
+	- Logs full status info.
+	- Checks for errors.
+	- Also sets up the GATT service info (service_id) for later use, sets service UUID
+3.
+```
+static void gatts_event_handler(esp_gatts_cd_event_t event,
+		esp_gatt_if_t gatt_if,
+		esp_ble_gatts_cd_param_t *param);
+
+/* One gatt-based profile, one app_id and one gatts_if, this array will store the gatts_if returned by ESP_GATTS_REG_EVT */
+static struct gatts_profile_inst heart_rate_profile_tab[PROFILE_NUM] ={
+	[PROFILE_APP_IDX] = {
+		.gatts_cd = gatts_profile_event_handler,
+		.gatt_if = ESP_GATT_IF_NONE, /* Not get the gatt_if, so initial is ESP_GATT_IF_NONE */
+	},
+};
+
+static void gatts_profile_event_handler(esp_gatts_cd_event_t event,
+		esp_gatt_if_t gatt_if,
+		esp_ble_gatts_cd_param_t *param){
+			ESP_LOGE(GATTS_TABLE_TAG, "event = %x"event);
+			switch (event) {
+				case ESP_GATTS_REG_EVT:
+					ESP_LOGI(GATTS_TABLE_TAG, "%s %d", __func__, __LINE__);
+					esp_ble_gap_set_device_name(SAMPLE_DEVICE_NAME);
+					ESP_LOGI(GATTS_TABLE_TAG, "%s %d", __func__, __LINE__);
+					esp_ble_gap_config_adv_data(&heart_rate_adv_config);
+					ESP_LOGI(GATTS_TABLE_TAG, "%s %d", __func__, __LINE__);
+			}
+		}
+```
+Logs event code and function/line
+	- Sets a device name.
+	- Adds useful debug logging.
+	- No error checking for esp_ble_gap_set_device_name
+
+All three handles the `ESP_GATTS_REG_EVT' and call `esp_ble_gap_set_device_name()` inside it,
+
+How dose error/information logging happens in ESP_LOGI()
+
+Possible GATT Server callback events.
+
 
 -	Registration and Lifecycle events	-
 
